@@ -1,12 +1,23 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getEntity, getAllReferences } from '@/lib/kv';
+import type { EntityType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ entityId: string }> };
 
 const REFBASE_BASE = 'https://www.refbase.ai';
+
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  company:      'Company',
+  service:      'Service',
+  product:      'Product',
+  person:       'Person',
+  organization: 'Organization',
+  concept:      'Concept',
+  other:        'Other',
+};
 
 const PID_COLORS: Record<string, string> = {
   'P-01': 'bg-violet-50 text-violet-700 border-violet-200',
@@ -108,8 +119,13 @@ export default async function EntityPage({ params }: Props) {
         <header className="mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-semibold leading-snug">{entity.name}</h1>
-              <p className="text-sm text-gray-500 mt-1">{entity.category}</p>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h1 className="text-2xl font-semibold leading-snug">{entity.name}</h1>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 text-[10px] font-medium text-gray-400 font-mono">
+                  {ENTITY_TYPE_LABELS[entity.entityType ?? 'company']}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500">{entity.category}</p>
             </div>
             <div className="text-right text-xs text-gray-400 shrink-0">
               <p>最終更新: {entity.updatedAt.slice(0, 10)}</p>

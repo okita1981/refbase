@@ -1,9 +1,20 @@
 import type { Metadata } from 'next';
 import { getGlobalIndex, getEntity, getEntityIndex } from '@/lib/kv';
+import type { EntityType } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 const REFBASE_BASE = 'https://www.refbase.ai';
+
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  company:      'Company',
+  service:      'Service',
+  product:      'Product',
+  person:       'Person',
+  organization: 'Organization',
+  concept:      'Concept',
+  other:        'Other',
+};
 
 export const metadata: Metadata = {
   title: 'RefBase — A reference layer for AI-generated answers.',
@@ -202,9 +213,14 @@ export default async function TopPage() {
                     <a href={`/entity/${e.id}`} className="group block">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 group-hover:text-gray-600 leading-snug">
-                            {e.name}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-gray-800 group-hover:text-gray-600 leading-snug">
+                              {e.name}
+                            </p>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 text-[10px] font-medium text-gray-400 font-mono">
+                              {ENTITY_TYPE_LABELS[e.entityType ?? 'company']}
+                            </span>
+                          </div>
                           <p className="text-xs text-gray-400 mt-0.5">{e.category}</p>
                         </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-medium border border-emerald-100 shrink-0">

@@ -1,5 +1,8 @@
 import { kv } from '@vercel/kv';
-import type { RefBaseCompany, RefBaseReference } from './types';
+import type { RefBaseEntity, RefBaseReference } from './types';
+
+// 後方互換のため RefBaseCompany も re-export
+export type { RefBaseCompany } from './types';
 
 // ── KV キー抽象化 ──────────────────────────────────────────────
 // REFBASE_STANDALONE=true になったとき、Aisle KV プレフィックスから
@@ -21,8 +24,8 @@ export const kvKey = {
 
 // ── データ取得ヘルパー ─────────────────────────────────────────
 
-export async function getEntity(entityId: string): Promise<RefBaseCompany | null> {
-  return kv.get<RefBaseCompany>(kvKey.entity(entityId));
+export async function getEntity(entityId: string): Promise<RefBaseEntity | null> {
+  return kv.get<RefBaseEntity>(kvKey.entity(entityId));
 }
 
 export async function getReference(entityId: string, referenceId: string): Promise<RefBaseReference | null> {
