@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getEntity, getReference, getEntityIndex } from '@/lib/kv';
 
+export const dynamic = 'force-dynamic';
+
 type Props = { params: Promise<{ entityId: string; referenceId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -11,10 +13,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     getReference(entityId, referenceId),
   ]);
   if (!entity || !reference) return { title: 'Not Found | RefBase' };
+  const canonicalUrl = `https://www.refbase.ai/reference/${entityId}/${referenceId}`;
   return {
     title: `${reference.promptText} | ${entity.name} | RefBase`,
     description: reference.answer.slice(0, 160),
-    openGraph: { title: `${entity.name} — ${reference.promptText}`, description: reference.answer.slice(0, 160) },
+    alternates: { canonical: canonicalUrl },
+    openGraph: { title: `${entity.name} — ${reference.promptText}`, description: reference.answer.slice(0, 160), url: canonicalUrl },
   };
 }
 
