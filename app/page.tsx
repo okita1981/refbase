@@ -86,7 +86,57 @@ export default async function TopPage() {
           </p>
         </header>
 
-        {/* ② 構造説明 */}
+        {/* ② Why RefBase */}
+        <section className="mb-12">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-6">
+            Why RefBase
+          </h2>
+          <div className="space-y-0 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+            {[
+              {
+                label: 'Traditional websites',
+                sub:   'Designed for human readers',
+                note:  'ナビゲーション・ブランド・デザインが前提。AIには構造が見えにくい。',
+                muted: true,
+              },
+              {
+                label: 'Search engines',
+                sub:   'Designed to rank documents',
+                note:  'キーワード密度・被リンク・ページ権威が評価軸。AI回答の引用単位とは異なる。',
+                muted: true,
+              },
+              {
+                label: 'RefBase',
+                sub:   'Designed as a reference layer for AI-generated answers',
+                note:  '問い別の回答・根拠・FAQをAIが取得・引用・統合しやすい単位で構造化する。',
+                muted: false,
+              },
+            ].map(row => (
+              <div
+                key={row.label}
+                className={`px-5 py-4 ${row.muted ? 'bg-white' : 'bg-gray-50'}`}
+              >
+                <div className="flex items-baseline gap-3 flex-wrap mb-1">
+                  <span className={`text-sm font-medium ${row.muted ? 'text-gray-400' : 'text-gray-800'}`}>
+                    {row.label}
+                  </span>
+                  <span className={`text-xs ${row.muted ? 'text-gray-300' : 'text-gray-500'}`}>
+                    — {row.sub}
+                  </span>
+                </div>
+                <p className={`text-xs leading-relaxed ${row.muted ? 'text-gray-300' : 'text-gray-500'}`}>
+                  {row.note}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed mt-4 max-w-lg">
+            生成AIはページ全体を読むのではなく、問いに対する回答・根拠・FAQ・比較軸などを統合して回答を生成します。
+            RefBaseは企業紹介サイトではなく、AIが取得・引用・統合しやすい単位で情報を構造化するための知識レイヤーです。
+          </p>
+        </section>
+
+        {/* ③ 構造説明 */}
         <section className="mb-12">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">
             Structure
