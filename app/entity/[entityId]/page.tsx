@@ -67,13 +67,28 @@ export default async function EntityPage({ params }: Props) {
   const entityUrl = `${REFBASE_BASE}/entity/${entityId}`;
 
   // ── JSON-LD ──────────────────────────────────────────────────
+  const sameAs = (entity.externalLinks ?? []).filter(u => u.url.trim()).map(u => u.url.trim());
+
+  // entityType → schema.org @type マッピング
+  const SCHEMA_TYPE: Record<string, string> = {
+    company:      'Organization',
+    service:      'Service',
+    product:      'Product',
+    person:       'Person',
+    organization: 'Organization',
+    concept:      'DefinedTerm',
+    other:        'Thing',
+  };
+  const schemaType = SCHEMA_TYPE[entity.entityType ?? 'company'] ?? 'Organization';
+
   const orgLd = {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
+    '@type': schemaType,
     name: entity.name,
     description: entity.category,
     url: entityUrl,
     identifier: entityId,
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
 
   const itemListLd = {
@@ -141,6 +156,30 @@ export default async function EntityPage({ params }: Props) {
             {entityUrl}
           </p>
         </header>
+
+        {/* 外部情報源 */}
+        {(entity.externalLinks ?? []).filter(u => u.url.trim()).length > 0 && (
+          <section className="mb-8 border border-gray-100 rounded-xl p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+              外部情報源
+            </h2>
+            <ul className="space-y-2">
+              {(entity.externalLinks ?? []).filter(u => u.url.trim()).map((link, i) => (
+                <li key={i} className="flex items-center gap-3 text-sm">
+                  <span className="shrink-0 w-20 text-xs text-gray-400">{link.type}</span>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline break-all font-mono text-xs"
+                  >
+                    {link.url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Reference 一覧 */}
         <section className="mb-10">

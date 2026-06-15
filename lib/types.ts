@@ -15,6 +15,7 @@ export interface RefBaseEntity {
   name: string;
   category: string;
   entityType?: EntityType; // 省略時は 'company' として扱う（既存データ後方互換）
+  externalLinks?: Array<{ type: string; url: string }>; // note / LinkedIn / PR記事等
   updatedAt: string;
 }
 
