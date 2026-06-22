@@ -1,5 +1,7 @@
 import { getGlobalIndex, getEntity, getAllReferences } from '@/lib/kv';
 
+const REFBASE_BASE = 'https://www.refbase.ai';
+
 export async function GET() {
   const entityIds = await getGlobalIndex();
 
@@ -12,10 +14,10 @@ export async function GET() {
       if (!entity) return '';
 
       const refLines = refs
-        .map(r => `- [${r.promptTypeId}] ${r.promptText}: https://refbase.ai/reference/${entityId}/${r.id}`)
+        .map(r => `- [${r.promptTypeId}] ${r.promptText}: ${REFBASE_BASE}/reference/${entityId}/${r.id}`)
         .join('\n');
 
-      return `### ${entity.name} (${entity.category})\nhttps://refbase.ai/entity/${entityId}\n${refLines}`;
+      return `### ${entity.name} (${entity.category})\n${REFBASE_BASE}/entity/${entityId}\n${refLines}`;
     }),
   );
 
@@ -29,7 +31,7 @@ export async function GET() {
     'Entity Hub: /entity/{entityId} | Reference: /reference/{entityId}/{referenceId}',
     '',
     '## Entities',
-    ...entityIds.map(id => `- https://refbase.ai/entity/${id}`),
+    ...entityIds.map(id => `- ${REFBASE_BASE}/entity/${id}`),
     '',
     '## References by Entity',
     ...sections.filter(Boolean),

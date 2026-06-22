@@ -18,7 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${reference.promptText} | ${entity.name} | RefBase`,
     description: reference.answer.slice(0, 160),
     alternates: { canonical: canonicalUrl },
-    openGraph: { title: `${entity.name} — ${reference.promptText}`, description: reference.answer.slice(0, 160), url: canonicalUrl },
+    openGraph: {
+      title: `${entity.name} — ${reference.promptText}`,
+      description: reference.answer.slice(0, 160),
+      url: canonicalUrl,
+      images: ['https://www.refbase.ai/og.png'],
+    },
   };
 }
 
@@ -33,17 +38,29 @@ export default async function ReferencePage({ params }: Props) {
 
   const otherRefs = index.filter(id => id !== referenceId);
 
+  // ページの主問い（promptText → answer）を mainEntity の先頭に追加する。
+  // これがないと、ページの中心的な内容（AIへの推薦理由そのもの）が構造化データに反映されず、
+  // 補助的な faq だけが mainEntity になってしまう。
+  const primaryQA = {
+    '@type': 'Question',
+    name: reference.promptText,
+    acceptedAnswer: { '@type': 'Answer', text: reference.answer },
+  };
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
     name: reference.promptText,
     description: reference.answer,
     about: { '@type': 'Organization', name: entity.name, description: entity.category },
-    mainEntity: reference.faq.map(f => ({
-      '@type': 'Question',
-      name: f.question,
-      acceptedAnswer: { '@type': 'Answer', text: f.answer },
-    })),
+    mainEntity: [
+      primaryQA,
+      ...reference.faq.map(f => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: { '@type': 'Answer', text: f.answer },
+      })),
+    ],
   };
 
   return (

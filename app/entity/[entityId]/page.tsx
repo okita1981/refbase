@@ -52,6 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${entity.name} | RefBase`,
       description: `${entity.name}のAI参照Reference一覧`,
       url: canonicalUrl,
+      images: ['https://www.refbase.ai/og.png'],
     },
   };
 }
