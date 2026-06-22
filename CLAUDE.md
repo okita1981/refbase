@@ -1,6 +1,6 @@
 # CLAUDE.md — RefBase 実装ガイダンス
 
-最終更新: 2026-06-11
+最終更新: 2026-06-22
 本番URL: https://www.refbase.ai
 リポジトリ: C:\Users\kousu\refbase
 GitHub: okita1981/refbase
@@ -56,12 +56,22 @@ refbase/
 │   │   ├── entity/[entityId]/route.ts              # GET /api/entity/{entityId}
 │   │   ├── reference/[entityId]/route.ts           # GET /api/reference/{entityId}
 │   │   └── reference/[entityId]/[referenceId]/route.ts
-│   └── llms.txt/route.ts                           # /llms.txt
+│   ├── llms.txt/route.ts                           # /llms.txt（getGlobalIndex()から自動生成）
+│   ├── sitemap.ts                                  # /sitemap.xml（Next.js規約・自動生成、要force-dynamic）
+│   ├── robots.ts                                   # /robots.txt（Next.js規約・全UA許可）
+│   └── manifest.ts                                 # /manifest.webmanifest（Next.js規約）
 ├── lib/
 │   ├── kv.ts       # KV抽象化レイヤー
 │   └── types.ts    # RefBaseCompany / RefBaseReference 型定義
 └── next.config.ts
 ```
+
+### Discovery層（2026-06-22 追加）
+
+新規Entity/Referenceは `getGlobalIndex()` / `getAllReferences()` を起点に自動集約される設計。sitemap.ts/llms.txtは**手動更新不要**、KVに保存された瞬間に次回アクセスで反映される。
+
+- `sitemap.ts` は `export const dynamic = 'force-dynamic'` 必須（無いとビルド時プリレンダリングでKV未接続エラーになる）
+- `llms.txt` のURLは `https://www.refbase.ai` に統一済み（旧 `https://refbase.ai`（wwwなし）は廃止）
 
 ---
 
@@ -75,6 +85,9 @@ refbase/
 | `/api/entity/{entityId}` | Entity JSON API |
 | `/api/reference/{entityId}/{referenceId}` | Reference JSON API |
 | `/llms.txt` | AI 向けインデックス |
+| `/sitemap.xml` | 全Entity/Reference URL（自動集約） |
+| `/robots.txt` | 全UA許可 + sitemap参照 |
+| `/manifest.webmanifest` | PWAマニフェスト |
 
 ---
 
@@ -92,10 +105,12 @@ interface RefBaseReference {
   differentiation: string;  // 他の選択肢との違い
   faq: { question: string; answer: string }[];
   pageUrl: string;          // Aisle側公開ページURL
-  sourceEvidence: EvidenceItem[];
+  sourceEvidence: EvidenceItem[];  // sourceUrl?/sourceType?対応済み（2026-06-22）。あればReferenceページで外部リンク表示
   generatedAt: string;
 }
 ```
+
+JSON-LD（`FAQPage`）の`mainEntity`は**先頭にページの主問い（promptText→answer）を含む**（2026-06-22修正。以前は補助FAQのみでページの中心内容が構造化データから漏れていた）。
 
 ---
 
@@ -110,7 +125,26 @@ interface RefBaseReference {
 
 ---
 
-## 7. ガードレール
+## 7. AI Crawlability 改善ロードマップ（2026-06-22〜）
+
+ユーザー方針：「AIに選ばれる品質」最優先。技術的負債解消そのものが目的ではない。
+
+| Phase | 内容 | ステータス |
+|-------|------|------------|
+| Phase 1 | Google Search Console登録・sitemap送信・URL Inspection・Bing Webmaster登録 | ⬜ 次回着手（Aisle→RefBaseリンク強化やnote等の外部リンク施策は**やらない方針**。RefBaseはAisleと独立したReference Baseとして育てる） |
+| Phase 2 | Emergence Monitorに「AI Crawl Log」機能追加（GPTBot/ClaudeBot/PerplexityBot/Google-Extended等のアクセス記録、URL別クロール履歴、AI Contactとの比較表示、Emergence Timeline） | ⬜ 未着手（emergence-monitor側の作業） |
+| Phase 3 | RefBase棚卸し（Discovery/Structure/JSON-LD/Evidence/Prompt/Reference品質を体系的に整理） | ⬜ 未着手 |
+| Phase 4 | Aisle Studio棚卸し（Reference生成品質/Evidence品質/Prompt品質/レポート品質） | ⬜ 未着手 |
+
+### 既知の知見（2026-06-22調査）
+
+- Discovery層（llms.txt/sitemap/robots/canonical/JSON-LD/entity内部リンク/API）は実装済みで技術的問題なし（`recommendation-002`/`003`/`citation-001`で全項目確認済み）
+- それでもPerplexity等のAI検索に拾われない場合の主因候補：①ドメイン自体が新しい（refbase.ai登録から日が浅い）②コンテンツ自体の引用強度（例：`citation-001`はP-05出典限定モードで「第三者出典は限定的」と自己申告しており、技術的に読めても引用候補として選ばれにくい構造）
+- 日本語データをコンソールに直接printすると、Windows環境のコンソール（cp932）でU+FFFDのような文字化け表示になることがある。**実データ確認は必ずファイル書き出し経由で行うこと**（過去に誤って「JSON-LD文字化け」と誤報告した実例あり）
+
+---
+
+## 8. ガードレール
 
 - Aisle 側でのみデータを書き込む（RefBase は読み取り専用プロジェクト）
 - SSR を維持する（`export const dynamic = 'force-dynamic'` または `revalidate` 設定）
