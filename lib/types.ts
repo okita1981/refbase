@@ -37,6 +37,7 @@ export interface RefBaseReference {
   sourceEvidence: Array<{
     type: string; title: string; description: string;
     entityRole: string; value?: string; tags: string[];
+    sourceUrl?: string; sourceType?: string;
   }>;
   generatedAt: string;
 }

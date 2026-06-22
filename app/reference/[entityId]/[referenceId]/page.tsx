@@ -6,6 +6,17 @@ export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ entityId: string; referenceId: string }> };
 
+// sourceEvidence.sourceType に応じた自然な出典リンク文言
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  official_site: '公式サイトを見る',
+  note:          'noteを見る',
+  pdf:           '資料を見る',
+  media:         '掲載記事を見る',
+  sns:           '投稿を見る',
+  manual:        '出典を見る',
+  other:         '出典を見る',
+};
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { entityId, referenceId } = await params;
   const [entity, reference] = await Promise.all([
@@ -139,6 +150,19 @@ export default async function ReferencePage({ params }: Props) {
                 <li key={i} className="text-sm text-gray-600">
                   <span className="font-medium text-gray-700">{ev.title}</span>
                   {ev.value && <span className="ml-2 text-gray-500">{ev.value}</span>}
+                  {ev.sourceUrl && (
+                    <>
+                      {' '}
+                      <a
+                        href={ev.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-blue-600 hover:underline text-xs"
+                      >
+                        {SOURCE_TYPE_LABELS[ev.sourceType ?? ''] ?? '出典を見る'}
+                      </a>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
