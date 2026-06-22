@@ -17,13 +17,19 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
 };
 
 export const metadata: Metadata = {
-  title: 'RefBase — A reference layer for AI-generated answers.',
-  description: '企業・サービスについて、AIが回答時に参照できる問い別の回答・根拠・FAQを構造化して公開する知識基盤です。',
+  title: 'RefBase | AIのための知識基盤',
+  description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
   alternates: { canonical: REFBASE_BASE },
   openGraph: {
-    title: 'RefBase — A reference layer for AI-generated answers.',
-    description: '企業・サービスについて、AIが回答時に参照できる問い別の回答・根拠・FAQを構造化して公開する知識基盤です。',
+    title: 'RefBase | AIのための知識基盤',
+    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
     url: REFBASE_BASE,
+    images: ['https://www.refbase.ai/og.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RefBase | AIのための知識基盤',
+    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
   },
 };
 
@@ -42,7 +48,7 @@ export default async function TopPage() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'RefBase',
-    description: 'A reference layer for AI-generated answers. 企業・サービスについて、AIが回答時に参照できる問い別の回答・根拠・FAQを構造化して公開する知識基盤。',
+    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。',
     url: REFBASE_BASE,
   };
 
