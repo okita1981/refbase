@@ -13,8 +13,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'RefBase — AI Reference Knowledge Base',
-  description: '企業・サービスに関する問い別回答と根拠情報を構造化して公開するナレッジレイヤー。生成AIが参照するための情報基盤です。',
+  title: 'RefBase | AIのための知識基盤',
+  description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+  openGraph: {
+    type: 'website',
+    siteName: 'RefBase',
+    title: 'RefBase | AIのための知識基盤',
+    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+    url: 'https://www.refbase.ai/',
+    images: ['https://www.refbase.ai/og.png'],
+    locale: 'ja_JP',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RefBase | AIのための知識基盤',
+    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({
