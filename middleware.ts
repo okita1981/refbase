@@ -6,15 +6,17 @@ import type { NextRequest, NextFetchEvent } from 'next/server';
 // ページ表示を絶対に遅延させない: event.waitUntil() でレスポンス確定後にバックグラウンド送信する。
 
 const BOT_PATTERNS: Array<[string, RegExp]> = [
-  ['GPTBot',             /GPTBot/i],
-  ['ChatGPT-User',       /ChatGPT-User/i],
-  ['ClaudeBot',          /ClaudeBot/i],
-  ['PerplexityBot',      /PerplexityBot/i],
-  ['Perplexity-User',    /Perplexity-User/i],
-  ['Googlebot',          /Googlebot/i],
-  ['Bingbot',            /Bingbot/i],
-  ['meta-externalagent', /meta-externalagent/i],
-  ['Bytespider',         /Bytespider/i],
+  ['GPTBot',               /GPTBot/i],
+  ['ChatGPT-User',         /ChatGPT-User/i],
+  ['ClaudeBot',            /ClaudeBot/i],
+  ['PerplexityBot',        /PerplexityBot/i],
+  ['Perplexity-User',      /Perplexity-User/i],
+  ['Google-InspectionTool', /Google-InspectionTool/i],
+  ['GoogleOther',          /GoogleOther/i],
+  ['Googlebot',            /Googlebot/i],
+  ['Bingbot',              /Bingbot/i],
+  ['meta-externalagent',   /meta-externalagent/i],
+  ['Bytespider',           /Bytespider/i],
 ];
 
 function detectBot(userAgent: string): string | null {
