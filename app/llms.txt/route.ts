@@ -1,6 +1,8 @@
 import { getGlobalIndex, getEntity, getAllReferences } from '@/lib/kv';
 import { PID_LABELS } from '@/lib/pid-labels';
 
+export const dynamic = 'force-dynamic';
+
 const REFBASE_BASE = 'https://www.refbase.ai';
 
 export async function GET() {
