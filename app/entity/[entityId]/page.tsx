@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getEntity, getAllReferences } from '@/lib/kv';
 import type { EntityType } from '@/lib/types';
+import { PID_LABELS, PID_COLORS } from '@/lib/pid-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,25 +20,8 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   other:        'Other',
 };
 
-const PID_COLORS: Record<string, string> = {
-  'P-01': 'bg-violet-50 text-violet-700 border-violet-200',
-  'P-02': 'bg-blue-50 text-blue-700 border-blue-200',
-  'P-03': 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  'P-04': 'bg-amber-50 text-amber-700 border-amber-200',
-  'P-05': 'bg-green-50 text-green-700 border-green-200',
-  'P-06': 'bg-rose-50 text-rose-700 border-rose-200',
-};
 const pidClass = (pid: string) =>
   PID_COLORS[pid] ?? 'bg-gray-50 text-gray-600 border-gray-200';
-
-const PID_LABELS: Record<string, string> = {
-  'P-01': '選定・相談',
-  'P-02': '比較・評価',
-  'P-03': 'ランキング',
-  'P-04': '課題解決',
-  'P-05': '出典引用',
-  'P-06': '推薦深掘り',
-};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { entityId } = await params;
