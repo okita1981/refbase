@@ -1,6 +1,24 @@
 import type { Metadata } from 'next';
+import { kv } from '@vercel/kv';
 import { getGlobalIndex, getEntity, getEntityIndex } from '@/lib/kv';
 import type { EntityType } from '@/lib/types';
+import { PID_LABELS, PID_COLORS } from '@/lib/pid-labels';
+
+interface ClusterItem {
+  clusterId: string;
+  slug: string;
+  name: string;
+  description: string;
+  entityCount: number;
+  representativeQuestions: string[];
+  primaryPromptTypes: string[];
+  maturity: string;
+  status: string;
+}
+
+interface ClusterRegistry {
+  items: ClusterItem[];
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +52,13 @@ export const metadata: Metadata = {
 };
 
 export default async function TopPage() {
-  const entityIds = await getGlobalIndex();
+  const [entityIds, clusterRegistry] = await Promise.all([
+    getGlobalIndex(),
+    kv.get<ClusterRegistry>('refbase:registry:clusters'),
+  ]);
+
+  const activeClusters = (clusterRegistry?.items ?? []).filter(c => c.status === 'ACTIVE');
+
   const entities = await Promise.all(
     entityIds.map(async id => {
       const [entity, index] = await Promise.all([getEntity(id), getEntityIndex(id)]);
@@ -66,11 +90,29 @@ export default async function TopPage() {
     })),
   } : null;
 
+  const clusterListLd = activeClusters.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'RefBase — Question Cluster一覧',
+    description: '問いの種類でまとめた分野別インデックス。AI回答に頻出する問いパターンを Cluster として整理しています。',
+    url: `${REFBASE_BASE}/#clusters`,
+    numberOfItems: activeClusters.length,
+    itemListElement: activeClusters.map((c, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${REFBASE_BASE}/cluster/${c.slug}`,
+      name: c.name,
+    })),
+  } : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
       {itemListLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
+      )}
+      {clusterListLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(clusterListLd) }} />
       )}
 
       <div className="max-w-2xl mx-auto px-4 py-12 text-gray-900">
@@ -223,6 +265,12 @@ export default async function TopPage() {
                     path: '/api/reference/{entityId}',
                     desc: 'Reference一覧をJSONで返す。answer / evidencePoints / faq を含む。',
                   },
+                  {
+                    label: 'Cluster API',
+                    href: '/api/cluster-registry',
+                    path: '/api/cluster-registry',
+                    desc: 'Cluster一覧をJSONで返す。entitySlugs / maturity / representativeQuestions を含む。',
+                  },
                 ].map((row, i) => (
                   <tr key={row.label} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                     <td className="py-3 pl-4 pr-3 font-medium text-gray-700 w-28 align-top shrink-0">
@@ -247,7 +295,75 @@ export default async function TopPage() {
           </div>
         </section>
 
-        {/* ④ Entities — 公開中のReference入口 */}
+        {/* ④ Clusters — Question Cluster入口 */}
+        {activeClusters.length > 0 && (
+          <section id="clusters" className="mb-12">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                Question Clusters
+              </h2>
+              <span className="text-[11px] text-gray-400">
+                {activeClusters.length} clusters
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed mb-5">
+              問いの種類でまとめた分野別インデックスです。AIが頻繁に受け取る問いパターンを Cluster として整理しています。
+            </p>
+            <ul className="space-y-3">
+              {activeClusters.map(c => (
+                <li key={c.slug} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
+                  <a href={`/cluster/${c.slug}`} className="group block">
+                    <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <p className="text-sm font-medium text-gray-800 group-hover:text-gray-600 leading-snug">
+                            {c.name}
+                          </p>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full border text-[10px] font-medium ${
+                            c.maturity === 'established'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {c.maturity === 'established' ? 'Established' : 'Growing'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">{c.description}</p>
+                      </div>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 text-[11px] font-medium border border-gray-100 shrink-0">
+                        {c.entityCount} Entities
+                      </span>
+                    </div>
+                    {c.representativeQuestions.slice(0, 2).map((q, i) => (
+                      <p key={i} className="text-[11px] text-gray-400 leading-relaxed mt-1">
+                        <span className="text-gray-300 mr-1">Q.</span>{q}
+                      </p>
+                    ))}
+                    {c.primaryPromptTypes.length > 0 && (
+                      <div className="flex gap-1 flex-wrap mt-2">
+                        {c.primaryPromptTypes.map(pid => (
+                          <span
+                            key={pid}
+                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[10px] font-bold ${PID_COLORS[pid] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}
+                          >
+                            {pid}
+                            {PID_LABELS[pid] && (
+                              <span className="font-normal">{PID_LABELS[pid]}</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-emerald-600 font-mono mt-2 break-all">
+                      {REFBASE_BASE}/cluster/{c.slug}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* ⑤ Entities — 公開中のReference入口 */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
