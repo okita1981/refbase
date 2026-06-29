@@ -2,11 +2,14 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { kv } from '@vercel/kv';
 import { getEntity, getAllReferences } from '@/lib/kv';
-import type { EntityType } from '@/lib/types';
+import type { EntityType, RefBaseEntity } from '@/lib/types';
 import { PID_LABELS, PID_COLORS } from '@/lib/pid-labels';
+
+// ── 型定義 ──────────────────────────────────────────────────────────────────
 
 interface ClusterItem {
   slug: string;
+  name: string;
   entitySlugs: string[];
   secondaryEntitySlugs?: string[];
   status: string;
@@ -25,13 +28,10 @@ interface RelationshipItem {
 }
 interface RelationshipRegistry { items: RelationshipItem[] }
 
-const REL_TYPE_LABELS: Record<string, string> = {
-  parentEntity:     'Parent entity',
-  productOf:        'Product of',
-  competitorOf:     'Competitor of',
-  alternativeTo:    'Alternative to',
-  memberOfCluster:  'Cluster',
-};
+type KGItem = { slug: string; name: string; description: string; url: string };
+type KGGroup = { label: string; items: KGItem[] };
+
+// ── 定数 ────────────────────────────────────────────────────────────────────
 
 export const dynamic = 'force-dynamic';
 
@@ -49,8 +49,39 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   other:        'Other',
 };
 
+const SCHEMA_TYPE: Record<string, string> = {
+  company:      'Organization',
+  service:      'Service',
+  product:      'Product',
+  person:       'Person',
+  organization: 'Organization',
+  concept:      'DefinedTerm',
+  other:        'Thing',
+};
+
 const pidClass = (pid: string) =>
   PID_COLORS[pid] ?? 'bg-gray-50 text-gray-600 border-gray-200';
+
+// ── ユーティリティ ───────────────────────────────────────────────────────────
+
+function buildKGItems(
+  rels: RelationshipItem[],
+  getCounterSlug: (r: RelationshipItem) => string,
+  counterMap: Map<string, RefBaseEntity | null>,
+): KGItem[] {
+  return rels.map(r => {
+    const slug = getCounterSlug(r);
+    const counter = counterMap.get(slug);
+    return {
+      slug,
+      name: counter?.name ?? slug,
+      description: r.description,
+      url: `${REFBASE_BASE}/entity/${slug}`,
+    };
+  });
+}
+
+// ── Metadata ────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { entityId } = await params;
@@ -63,15 +94,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: `${entity.name} | RefBase`,
-      description: `${entity.name}のAI参照Reference一覧`,
+      description: `${entity.name}（${entity.category}）の AI Knowledge Hub。問い別の Reference・根拠・比較情報を構造化して公開。`,
       url: canonicalUrl,
-      images: ['https://www.refbase.ai/og.png'],
+      images: [`${REFBASE_BASE}/og.png`],
     },
   };
 }
 
+// ── Page ────────────────────────────────────────────────────────────────────
+
 export default async function EntityPage({ params }: Props) {
   const { entityId } = await params;
+
+  // 並行取得: Entity本体 / Reference一覧 / ClusterRegistry / RelationshipRegistry
   const [entity, references, clusterRegistry, relRegistry] = await Promise.all([
     getEntity(entityId),
     getAllReferences(entityId),
@@ -80,41 +115,78 @@ export default async function EntityPage({ params }: Props) {
   ]);
   if (!entity) notFound();
 
-  // Cluster 逆引き: entityId が entitySlugs に含まれる Cluster を primaryCluster とする
+  // Cluster 逆引き
   const activeClusters = (clusterRegistry?.items ?? []).filter(c => c.status === 'ACTIVE');
-  const primaryCluster = activeClusters.find(c => c.entitySlugs.includes(entityId));
-  const secondaryClusters = activeClusters.filter(
-    c => c.secondaryEntitySlugs?.includes(entityId),
-  );
+  const primaryCluster   = activeClusters.find(c => c.entitySlugs.includes(entityId)) ?? null;
+  const secondaryClusters = activeClusters.filter(c => c.secondaryEntitySlugs?.includes(entityId));
 
-  // Relationship 抽出: ACTIVE かつこの Entity が source または target のもの
+  // Relationship 抽出（ACTIVE のみ）
   const allRels = (relRegistry?.items ?? []).filter(r => r.status === 'ACTIVE');
   const entityRels = allRels.filter(
     r => r.sourceEntity === entityId || r.targetEntity === entityId,
   );
 
+  // Knowledge Graph 用: memberOfCluster を除外した Relationship
+  const kgRels = entityRels.filter(r => r.relationshipType !== 'memberOfCluster');
+
+  // counter-Entity 名を並行取得（重複なし）
+  const counterSlugs = [...new Set(
+    kgRels.map(r => r.sourceEntity === entityId ? r.targetEntity : r.sourceEntity)
+  )];
+  const counterEntityList = await Promise.all(counterSlugs.map(slug => getEntity(slug)));
+  const counterEntityMap = new Map<string, RefBaseEntity | null>(
+    counterSlugs.map((slug, i) => [slug, counterEntityList[i]])
+  );
+
+  // Knowledge Graph グループ化（表示順固定）
+  const kgGroups: KGGroup[] = [];
+
+  const competitorRels  = kgRels.filter(r => r.relationshipType === 'competitorOf');
+  const altRels         = kgRels.filter(r => r.relationshipType === 'alternativeTo');
+  const parentRels      = kgRels.filter(r => r.relationshipType === 'parentEntity' && r.sourceEntity === entityId);
+  const subsidiaryRels  = kgRels.filter(r => r.relationshipType === 'parentEntity' && r.targetEntity === entityId);
+  const partOfRels      = kgRels.filter(r => r.relationshipType === 'productOf' && r.sourceEntity === entityId);
+  const productRels     = kgRels.filter(r => r.relationshipType === 'productOf' && r.targetEntity === entityId);
+
+  if (competitorRels.length > 0)  kgGroups.push({ label: 'Competitors',         items: buildKGItems(competitorRels,  r => r.sourceEntity === entityId ? r.targetEntity : r.sourceEntity, counterEntityMap) });
+  if (altRels.length > 0)         kgGroups.push({ label: 'Alternatives',         items: buildKGItems(altRels,         r => r.sourceEntity === entityId ? r.targetEntity : r.sourceEntity, counterEntityMap) });
+  if (parentRels.length > 0)      kgGroups.push({ label: 'Parent Organization',  items: buildKGItems(parentRels,      r => r.targetEntity, counterEntityMap) });
+  if (subsidiaryRels.length > 0)  kgGroups.push({ label: 'Subsidiaries',         items: buildKGItems(subsidiaryRels,  r => r.sourceEntity, counterEntityMap) });
+  if (partOfRels.length > 0)      kgGroups.push({ label: 'Part of',              items: buildKGItems(partOfRels,      r => r.targetEntity, counterEntityMap) });
+  if (productRels.length > 0)     kgGroups.push({ label: 'Products',             items: buildKGItems(productRels,     r => r.sourceEntity, counterEntityMap) });
+
+  // ── JSON-LD ────────────────────────────────────────────────────────────────
+
   const entityUrl = `${REFBASE_BASE}/entity/${entityId}`;
-
-  // ── JSON-LD ──────────────────────────────────────────────────
   const sameAs = (entity.externalLinks ?? []).filter(u => u.url.trim()).map(u => u.url.trim());
-
-  // entityType → schema.org @type マッピング
-  const SCHEMA_TYPE: Record<string, string> = {
-    company:      'Organization',
-    service:      'Service',
-    product:      'Product',
-    person:       'Person',
-    organization: 'Organization',
-    concept:      'DefinedTerm',
-    other:        'Thing',
-  };
   const schemaType = SCHEMA_TYPE[entity.entityType ?? 'company'] ?? 'Organization';
 
-  // additionalType: Cluster URL で Entity を Cluster 文脈に接続する
-  const clusterUrls: string[] = [
+  const clusterUrls = [
     ...(primaryCluster ? [`${REFBASE_BASE}/cluster/${primaryCluster.slug}`] : []),
     ...secondaryClusters.map(c => `${REFBASE_BASE}/cluster/${c.slug}`),
   ];
+
+  // Relationship JSON-LD（schema.org で表現できるもののみ）
+  const competitorLd = competitorRels.length > 0 ? {
+    competitor: competitorRels.map(r => {
+      const slug = r.sourceEntity === entityId ? r.targetEntity : r.sourceEntity;
+      return { '@type': schemaType, '@id': `${REFBASE_BASE}/entity/${slug}` };
+    }),
+  } : {};
+
+  // parentEntity: 自分が子（sourceEntity）の場合のみ parentOrganization を付与
+  const parentOrgLd = parentRels.length > 0 ? {
+    parentOrganization: parentRels.length === 1
+      ? { '@type': 'Organization', '@id': `${REFBASE_BASE}/entity/${parentRels[0].targetEntity}` }
+      : parentRels.map(r => ({ '@type': 'Organization', '@id': `${REFBASE_BASE}/entity/${r.targetEntity}` })),
+  } : {};
+
+  // productOf: 自分が product（sourceEntity）の場合のみ isPartOf を付与
+  const isPartOfLd = partOfRels.length > 0 ? {
+    isPartOf: partOfRels.length === 1
+      ? { '@type': 'Organization', '@id': `${REFBASE_BASE}/entity/${partOfRels[0].targetEntity}` }
+      : partOfRels.map(r => ({ '@type': 'Organization', '@id': `${REFBASE_BASE}/entity/${r.targetEntity}` })),
+  } : {};
 
   const orgLd = {
     '@context': 'https://schema.org',
@@ -125,6 +197,9 @@ export default async function EntityPage({ params }: Props) {
     identifier: entityId,
     ...(sameAs.length > 0 ? { sameAs } : {}),
     ...(clusterUrls.length > 0 ? { additionalType: clusterUrls } : {}),
+    ...competitorLd,
+    ...parentOrgLd,
+    ...isPartOfLd,
   };
 
   const itemListLd = {
@@ -151,6 +226,8 @@ export default async function EntityPage({ params }: Props) {
     ],
   };
 
+  // ── レンダリング ─────────────────────────────────────────────────────────────
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
@@ -169,15 +246,39 @@ export default async function EntityPage({ params }: Props) {
         {/* Entity ヘッダー */}
         <header className="mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h1 className="text-2xl font-semibold leading-snug">{entity.name}</h1>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 text-[10px] font-medium text-gray-400 font-mono">
                   {ENTITY_TYPE_LABELS[entity.entityType ?? 'company']}
                 </span>
               </div>
-              <p className="text-sm text-gray-500">{entity.category}</p>
+              <p className="text-sm text-gray-500 mb-2">{entity.category}</p>
+
+              {/* Cluster バッジ（primaryCluster + secondaryClusters） */}
+              {(primaryCluster || secondaryClusters.length > 0) && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {primaryCluster && (
+                    <a
+                      href={`/cluster/${primaryCluster.slug}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs hover:bg-emerald-100 transition-colors"
+                    >
+                      {primaryCluster.name}
+                    </a>
+                  )}
+                  {secondaryClusters.map(c => (
+                    <a
+                      key={c.slug}
+                      href={`/cluster/${c.slug}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-200 text-xs hover:bg-gray-100 transition-colors"
+                    >
+                      {c.name}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div className="text-right text-xs text-gray-400 shrink-0">
               <p>最終更新: {entity.updatedAt.slice(0, 10)}</p>
               <p className="mt-0.5">
@@ -187,7 +288,7 @@ export default async function EntityPage({ params }: Props) {
               </p>
             </div>
           </div>
-          {/* Entity URL */}
+
           <p className="mt-3 text-xs text-gray-400 font-mono break-all">
             {entityUrl}
           </p>
@@ -217,54 +318,40 @@ export default async function EntityPage({ params }: Props) {
           </section>
         )}
 
-        {/* Knowledge Graph — Relationship 表示 */}
-        {entityRels.length > 0 && (
+        {/* Knowledge Graph */}
+        {kgGroups.length > 0 && (
           <section className="mb-8 border border-gray-100 rounded-xl p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
               Knowledge Graph
             </h2>
-            <ul className="space-y-2">
-              {entityRels.map(r => {
-                // 表示ラベルと direction 記号を決定
-                const iAmSource = r.sourceEntity === entityId;
-                const counterSlug = iAmSource ? r.targetEntity : r.sourceEntity;
-                const isMemberOfCluster = r.relationshipType === 'memberOfCluster';
-                const counterUrl = isMemberOfCluster
-                  ? `${REFBASE_BASE}/cluster/${counterSlug}`
-                  : `${REFBASE_BASE}/entity/${counterSlug}`;
-                // directed: 矢印で方向を示す。bidirectional: ↔
-                const arrow = r.direction === 'bidirectional'
-                  ? '↔'
-                  : iAmSource ? '→' : '←';
-
-                return (
-                  <li key={r.relationshipId} className="flex items-start gap-3 text-sm">
-                    <span className="shrink-0 w-28 text-[11px] text-gray-400 pt-0.5">
-                      {REL_TYPE_LABELS[r.relationshipType] ?? r.relationshipType}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-gray-400 font-mono text-xs">{arrow}</span>
+            <div className="space-y-5">
+              {kgGroups.map(group => (
+                <div key={group.label}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-300 mb-2">
+                    {group.label}
+                  </p>
+                  <ul className="space-y-2">
+                    {group.items.map(item => (
+                      <li key={item.slug}>
                         <a
-                          href={counterUrl}
-                          className="font-mono text-xs text-blue-600 hover:underline"
+                          href={item.url}
+                          className="group flex items-start gap-2 hover:no-underline"
                         >
-                          {counterSlug}
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 leading-snug shrink-0">
+                            {item.name}
+                          </span>
+                          {item.description && (
+                            <span className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
+                              — {item.description}
+                            </span>
+                          )}
                         </a>
-                        <span className="text-[10px] text-gray-300 border border-gray-200 rounded px-1">
-                          {r.confidence}
-                        </span>
-                      </div>
-                      {r.description && (
-                        <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
-                          {r.description}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 
@@ -283,12 +370,10 @@ export default async function EntityPage({ params }: Props) {
                 return (
                   <li key={r.id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
                     <div className="flex items-start gap-3">
-                      {/* 連番 */}
                       <span className="text-xs font-bold text-gray-300 shrink-0 mt-0.5 w-4 text-right">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        {/* P-ID バッジ */}
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[11px] font-bold ${pidClass(r.promptTypeId)}`}>
                             {r.promptTypeId}
@@ -297,14 +382,12 @@ export default async function EntityPage({ params }: Props) {
                             <span className="text-[11px] text-gray-400">{PID_LABELS[r.promptTypeId]}</span>
                           )}
                         </div>
-                        {/* 問い文 */}
                         <a
                           href={refUrl}
                           className="block text-sm font-medium text-gray-800 hover:text-gray-600 leading-snug mb-2"
                         >
                           {r.promptText}
                         </a>
-                        {/* Reference URL + メタ情報 */}
                         <div className="flex items-center gap-3 flex-wrap">
                           <a
                             href={refUrl}
@@ -326,7 +409,7 @@ export default async function EntityPage({ params }: Props) {
           )}
         </section>
 
-        {/* AI / API 導線 */}
+        {/* データアクセス */}
         <section className="border border-gray-100 rounded-xl p-4 bg-gray-50 mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
             データアクセス
