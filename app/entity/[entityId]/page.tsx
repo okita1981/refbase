@@ -1,8 +1,17 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { kv } from '@vercel/kv';
 import { getEntity, getAllReferences } from '@/lib/kv';
 import type { EntityType } from '@/lib/types';
 import { PID_LABELS, PID_COLORS } from '@/lib/pid-labels';
+
+interface ClusterItem {
+  slug: string;
+  entitySlugs: string[];
+  secondaryEntitySlugs?: string[];
+  status: string;
+}
+interface ClusterRegistry { items: ClusterItem[] }
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +52,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EntityPage({ params }: Props) {
   const { entityId } = await params;
-  const [entity, references] = await Promise.all([
+  const [entity, references, clusterRegistry] = await Promise.all([
     getEntity(entityId),
     getAllReferences(entityId),
+    kv.get<ClusterRegistry>('refbase:registry:clusters'),
   ]);
   if (!entity) notFound();
+
+  // Cluster 逆引き: entityId が entitySlugs に含まれる Cluster を primaryCluster とする
+  const activeClusters = (clusterRegistry?.items ?? []).filter(c => c.status === 'ACTIVE');
+  const primaryCluster = activeClusters.find(c => c.entitySlugs.includes(entityId));
+  const secondaryClusters = activeClusters.filter(
+    c => c.secondaryEntitySlugs?.includes(entityId),
+  );
 
   const entityUrl = `${REFBASE_BASE}/entity/${entityId}`;
 
@@ -66,6 +83,12 @@ export default async function EntityPage({ params }: Props) {
   };
   const schemaType = SCHEMA_TYPE[entity.entityType ?? 'company'] ?? 'Organization';
 
+  // additionalType: Cluster URL で Entity を Cluster 文脈に接続する
+  const clusterUrls: string[] = [
+    ...(primaryCluster ? [`${REFBASE_BASE}/cluster/${primaryCluster.slug}`] : []),
+    ...secondaryClusters.map(c => `${REFBASE_BASE}/cluster/${c.slug}`),
+  ];
+
   const orgLd = {
     '@context': 'https://schema.org',
     '@type': schemaType,
@@ -74,6 +97,7 @@ export default async function EntityPage({ params }: Props) {
     url: entityUrl,
     identifier: entityId,
     ...(sameAs.length > 0 ? { sameAs } : {}),
+    ...(clusterUrls.length > 0 ? { additionalType: clusterUrls } : {}),
   };
 
   const itemListLd = {

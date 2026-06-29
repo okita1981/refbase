@@ -52,10 +52,23 @@ export default async function ReferencePage({ params }: Props) {
   // ページの主問い（promptText → answer）を mainEntity の先頭に追加する。
   // これがないと、ページの中心的な内容（AIへの推薦理由そのもの）が構造化データに反映されず、
   // 補助的な faq だけが mainEntity になってしまう。
+  // citation: sourceEvidence の sourceUrl から重複排除して抽出
+  const citationUrls = [
+    ...new Set(
+      reference.sourceEvidence
+        .map(ev => ev.sourceUrl ?? '')
+        .filter(url => url.length > 0),
+    ),
+  ];
+
   const primaryQA = {
     '@type': 'Question',
     name: reference.promptText,
-    acceptedAnswer: { '@type': 'Answer', text: reference.answer },
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: reference.answer,
+      ...(citationUrls.length > 0 ? { citation: citationUrls.map(url => ({ '@type': 'WebPage', url })) } : {}),
+    },
   };
 
   const jsonLd = {
@@ -64,6 +77,7 @@ export default async function ReferencePage({ params }: Props) {
     name: reference.promptText,
     description: reference.answer,
     about: { '@type': 'Organization', name: entity.name, description: entity.category },
+    ...(citationUrls.length > 0 ? { citation: citationUrls.map(url => ({ '@type': 'WebPage', url })) } : {}),
     mainEntity: [
       primaryQA,
       ...reference.faq.map(f => ({
