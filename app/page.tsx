@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import { kv } from '@vercel/kv';
-import { getGlobalIndex, getEntity, getEntityIndex } from '@/lib/kv';
-import type { EntityType } from '@/lib/types';
 import { PID_LABELS, PID_COLORS } from '@/lib/pid-labels';
 
 interface ClusterItem {
@@ -23,16 +21,7 @@ interface ClusterRegistry {
 export const dynamic = 'force-dynamic';
 
 const REFBASE_BASE = 'https://www.refbase.ai';
-
-const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
-  company:      'Company',
-  service:      'Service',
-  product:      'Product',
-  person:       'Person',
-  organization: 'Organization',
-  concept:      'Concept',
-  other:        'Other',
-};
+const FEATURED_CLUSTER_COUNT = 6;
 
 export const metadata: Metadata = {
   title: 'RefBase — AI Knowledge Infrastructure',
@@ -52,21 +41,9 @@ export const metadata: Metadata = {
 };
 
 export default async function TopPage() {
-  const [entityIds, clusterRegistry] = await Promise.all([
-    getGlobalIndex(),
-    kv.get<ClusterRegistry>('refbase:registry:clusters'),
-  ]);
-
+  const clusterRegistry = await kv.get<ClusterRegistry>('refbase:registry:clusters');
   const activeClusters = (clusterRegistry?.items ?? []).filter(c => c.status === 'ACTIVE');
-
-  const entities = await Promise.all(
-    entityIds.map(async id => {
-      const [entity, index] = await Promise.all([getEntity(id), getEntityIndex(id)]);
-      return entity ? { ...entity, refCount: index.length } : null;
-    }),
-  );
-  const validEntities = entities.filter((e): e is NonNullable<typeof entities[0]> => e !== null);
-  const totalRefs = validEntities.reduce((s, e) => s + e.refCount, 0);
+  const featuredClusters = activeClusters.slice(0, FEATURED_CLUSTER_COUNT);
 
   const websiteLd = {
     '@context': 'https://schema.org',
@@ -76,44 +53,9 @@ export default async function TopPage() {
     url: REFBASE_BASE,
   };
 
-  const itemListLd = validEntities.length > 0 ? {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'RefBase — 公開中のEntity一覧',
-    url: REFBASE_BASE,
-    numberOfItems: validEntities.length,
-    itemListElement: validEntities.map((e, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      url: `${REFBASE_BASE}/entity/${e.id}`,
-      name: e.name,
-    })),
-  } : null;
-
-  const clusterListLd = activeClusters.length > 0 ? {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'RefBase — AI Knowledge Directory',
-    description: '問いのパターンで整理した AI Knowledge Index。分野ごとに Entity / Reference を探索できる Cluster の一覧。',
-    url: `${REFBASE_BASE}/#knowledge-directory`,
-    numberOfItems: activeClusters.length,
-    itemListElement: activeClusters.map((c, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      url: `${REFBASE_BASE}/cluster/${c.slug}`,
-      name: c.name,
-    })),
-  } : null;
-
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
-      {itemListLd && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
-      )}
-      {clusterListLd && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(clusterListLd) }} />
-      )}
 
       <div className="max-w-2xl mx-auto px-4 py-12 text-gray-900">
 
@@ -132,7 +74,7 @@ export default async function TopPage() {
             企業・サービス・商品に関する知識を、<br />
             AI が理解・比較・推論・推薦できる形へ構造化する基盤。
           </p>
-          <a href="#knowledge-directory" className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+          <a href="/directory" className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
             Explore AI Knowledge Directory →
           </a>
         </header>
@@ -253,9 +195,9 @@ export default async function TopPage() {
           </div>
         </section>
 
-        {/* ④ Clusters — AI Knowledge Directory */}
-        {activeClusters.length > 0 && (
-          <section id="knowledge-directory" className="mb-12">
+        {/* ④ Featured AI Knowledge Directory */}
+        {featuredClusters.length > 0 && (
+          <section className="mb-12">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                 AI Knowledge Directory
@@ -265,10 +207,10 @@ export default async function TopPage() {
               </span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed mb-5">
-              問いのパターンで整理した、AI Knowledge Index です。AI が頻繁に受け取る Question を Cluster として分類し、分野ごとに Entity / Reference を探索できます。
+              AI が頻繁に受け取る問いを Cluster として分類した Knowledge Index です。分野ごとに Entity・Reference を探索できます。
             </p>
             <ul className="space-y-3">
-              {activeClusters.map(c => (
+              {featuredClusters.map(c => (
                 <li key={c.slug} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
                   <a href={`/cluster/${c.slug}`} className="group block">
                     <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
@@ -318,55 +260,13 @@ export default async function TopPage() {
                 </li>
               ))}
             </ul>
+            <div className="mt-4 text-right">
+              <a href="/directory" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+                View all clusters →
+              </a>
+            </div>
           </section>
         )}
-
-        {/* ⑤ Entities — 公開中のReference入口 */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Published Entities
-            </h2>
-            <span className="text-[11px] text-gray-400">
-              {validEntities.length} entities · {totalRefs} references
-            </span>
-          </div>
-
-          {validEntities.length === 0 ? (
-            <p className="text-sm text-gray-400">公開中のEntityはありません。</p>
-          ) : (
-            <ul className="space-y-3">
-              {validEntities.map(e => {
-                const entityUrl = `${REFBASE_BASE}/entity/${e.id}`;
-                return (
-                  <li key={e.id} className="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors">
-                    <a href={`/entity/${e.id}`} className="group block">
-                      <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium text-gray-800 group-hover:text-gray-600 leading-snug">
-                              {e.name}
-                            </p>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 text-[10px] font-medium text-gray-400 font-mono">
-                              {ENTITY_TYPE_LABELS[e.entityType ?? 'company']}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-0.5">{e.category}</p>
-                        </div>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-medium border border-emerald-100 shrink-0">
-                          {e.refCount} References
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-emerald-600 font-mono mt-2 break-all">
-                        {entityUrl}
-                      </p>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
 
         {/* ⑥ AI & Machine Access */}
         <section className="mb-12">
