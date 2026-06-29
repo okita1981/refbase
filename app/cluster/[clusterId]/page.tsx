@@ -54,10 +54,11 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 
 // ── データ取得 ──────────────────────────────────────────────────────────────
 
-async function getCluster(clusterId: string): Promise<ClusterItem | null> {
+async function getClusterData(clusterId: string): Promise<{ cluster: ClusterItem | null; allClusters: ClusterItem[] }> {
   const registry = await kv.get<ClusterRegistry>('refbase:registry:clusters');
-  if (!registry?.items) return null;
-  return registry.items.find(c => c.slug === clusterId && c.status !== 'DRAFT') ?? null;
+  const allClusters = registry?.items ?? [];
+  const cluster = allClusters.find(c => c.slug === clusterId && c.status !== 'DRAFT') ?? null;
+  return { cluster, allClusters };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -66,12 +67,11 @@ async function getCluster(clusterId: string): Promise<ClusterItem | null> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { clusterId } = await params;
-  const cluster = await getCluster(clusterId);
+  const { cluster } = await getClusterData(clusterId);
   if (!cluster) return { title: 'Not Found | RefBase' };
 
   const canonicalUrl = `${REFBASE_BASE}/cluster/${clusterId}`;
-  const entityNames = cluster.entitySlugs.slice(0, 4).join(', ');
-  const description = `${entityNames} など${cluster.name}に関するReferenceをまとめたClusterページです。生成AIが参照できる構造化知識を公開しています。`;
+  const description = `${cluster.name}に関する企業・サービス・商品の Knowledge Index です。AI が頻繁に受け取る問いのパターンを Reference として構造化して公開しています。`;
 
   return {
     title: `${cluster.name} | RefBase`,
@@ -92,7 +92,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ClusterPage({ params }: Props) {
   const { clusterId } = await params;
-  const cluster = await getCluster(clusterId);
+  const { cluster, allClusters } = await getClusterData(clusterId);
   if (!cluster) notFound();
 
   const clusterUrl = `${REFBASE_BASE}/cluster/${clusterId}`;
@@ -212,7 +212,7 @@ export default async function ClusterPage({ params }: Props) {
         {cluster.representativeQuestions.length > 0 && (
           <section className="mb-8 border border-gray-100 rounded-xl p-4 bg-gray-50">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-              このClusterに集まる問い
+              このカテゴリに集まる問い
             </h2>
             <ul className="space-y-2">
               {cluster.representativeQuestions.map((q, i) => (
@@ -242,7 +242,7 @@ export default async function ClusterPage({ params }: Props) {
         {/* Entity 一覧 */}
         <section className="mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
-            所属 Entity — {cluster.entityCount}件
+            企業・サービス・商品 — {cluster.entityCount}件
           </h2>
           <ul className="space-y-2">
             {entityResults.map(({ slug, entity, index }) => {
@@ -284,7 +284,7 @@ export default async function ClusterPage({ params }: Props) {
         {representativeRefs.length > 0 && (
           <section className="mb-8">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
-              代表 Reference
+              代表的な問いと回答
             </h2>
             <ul className="space-y-3">
               {representativeRefs.map(({ entitySlug, entityName, ref }) => {
@@ -326,15 +326,18 @@ export default async function ClusterPage({ params }: Props) {
               関連 Cluster
             </h2>
             <div className="flex gap-2 flex-wrap">
-              {cluster.relatedClusters.map(rel => (
-                <a
-                  key={rel}
-                  href={`/cluster/${rel}`}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full border border-gray-200 text-sm text-gray-600 hover:border-gray-300 hover:text-gray-800 transition-colors"
-                >
-                  {rel}
-                </a>
-              ))}
+              {cluster.relatedClusters.map(rel => {
+                const relName = allClusters.find(c => c.slug === rel)?.name ?? rel;
+                return (
+                  <a
+                    key={rel}
+                    href={`/cluster/${rel}`}
+                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-gray-200 text-sm text-gray-600 hover:border-gray-300 hover:text-gray-800 transition-colors"
+                  >
+                    {relName}
+                  </a>
+                );
+              })}
             </div>
           </section>
         )}
@@ -365,7 +368,7 @@ export default async function ClusterPage({ params }: Props) {
           <p>
             <a href="/" className="hover:underline">RefBase</a>
             {' — '}
-            AI Reference Knowledge Base
+            AI Knowledge Infrastructure
           </p>
           <p className="mt-1 font-mono text-gray-300 break-all">{clusterUrl}</p>
         </footer>

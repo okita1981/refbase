@@ -13,21 +13,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'RefBase | AIのための知識基盤',
-  description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+  title: 'RefBase — AI Knowledge Infrastructure',
+  description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化する基盤。Question → Cluster → Entity → Reference → Evidence の構造で、AI の回答に自然に出現できる状態をつくる。',
   openGraph: {
     type: 'website',
     siteName: 'RefBase',
-    title: 'RefBase | AIのための知識基盤',
-    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+    title: 'RefBase — AI Knowledge Infrastructure',
+    description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化する基盤。',
     url: 'https://www.refbase.ai/',
     images: ['https://www.refbase.ai/og.png'],
     locale: 'ja_JP',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RefBase | AIのための知識基盤',
-    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+    title: 'RefBase — AI Knowledge Infrastructure',
+    description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化する基盤。',
   },
   icons: {
     icon: [

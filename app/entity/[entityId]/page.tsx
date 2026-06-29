@@ -13,6 +13,26 @@ interface ClusterItem {
 }
 interface ClusterRegistry { items: ClusterItem[] }
 
+interface RelationshipItem {
+  relationshipId: string;
+  sourceEntity: string;
+  targetEntity: string;
+  relationshipType: string;
+  direction: 'directed' | 'bidirectional';
+  description: string;
+  confidence: string;
+  status: string;
+}
+interface RelationshipRegistry { items: RelationshipItem[] }
+
+const REL_TYPE_LABELS: Record<string, string> = {
+  parentEntity:     'Parent entity',
+  productOf:        'Product of',
+  competitorOf:     'Competitor of',
+  alternativeTo:    'Alternative to',
+  memberOfCluster:  'Cluster',
+};
+
 export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ entityId: string }> };
@@ -38,8 +58,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!entity) return { title: 'Not Found | RefBase' };
   const canonicalUrl = `${REFBASE_BASE}/entity/${entityId}`;
   return {
-    title: `${entity.name} — AI参照知識Hub | RefBase`,
-    description: `${entity.name}（${entity.category}）に関するAI参照Referenceのインデックスです。生成AIが問いに答える際に参照できる構造化知識を公開しています。`,
+    title: `${entity.name} — AI Knowledge Hub | RefBase`,
+    description: `${entity.name}（${entity.category}）に関する Question と Reference のインデックス。AI が理解・比較・推薦できる構造化知識を公開しています。`,
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: `${entity.name} | RefBase`,
@@ -52,10 +72,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EntityPage({ params }: Props) {
   const { entityId } = await params;
-  const [entity, references, clusterRegistry] = await Promise.all([
+  const [entity, references, clusterRegistry, relRegistry] = await Promise.all([
     getEntity(entityId),
     getAllReferences(entityId),
     kv.get<ClusterRegistry>('refbase:registry:clusters'),
+    kv.get<RelationshipRegistry>('refbase:registry:relationships'),
   ]);
   if (!entity) notFound();
 
@@ -64,6 +85,12 @@ export default async function EntityPage({ params }: Props) {
   const primaryCluster = activeClusters.find(c => c.entitySlugs.includes(entityId));
   const secondaryClusters = activeClusters.filter(
     c => c.secondaryEntitySlugs?.includes(entityId),
+  );
+
+  // Relationship 抽出: ACTIVE かつこの Entity が source または target のもの
+  const allRels = (relRegistry?.items ?? []).filter(r => r.status === 'ACTIVE');
+  const entityRels = allRels.filter(
+    r => r.sourceEntity === entityId || r.targetEntity === entityId,
   );
 
   const entityUrl = `${REFBASE_BASE}/entity/${entityId}`;
@@ -190,10 +217,61 @@ export default async function EntityPage({ params }: Props) {
           </section>
         )}
 
+        {/* Knowledge Graph — Relationship 表示 */}
+        {entityRels.length > 0 && (
+          <section className="mb-8 border border-gray-100 rounded-xl p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+              Knowledge Graph
+            </h2>
+            <ul className="space-y-2">
+              {entityRels.map(r => {
+                // 表示ラベルと direction 記号を決定
+                const iAmSource = r.sourceEntity === entityId;
+                const counterSlug = iAmSource ? r.targetEntity : r.sourceEntity;
+                const isMemberOfCluster = r.relationshipType === 'memberOfCluster';
+                const counterUrl = isMemberOfCluster
+                  ? `${REFBASE_BASE}/cluster/${counterSlug}`
+                  : `${REFBASE_BASE}/entity/${counterSlug}`;
+                // directed: 矢印で方向を示す。bidirectional: ↔
+                const arrow = r.direction === 'bidirectional'
+                  ? '↔'
+                  : iAmSource ? '→' : '←';
+
+                return (
+                  <li key={r.relationshipId} className="flex items-start gap-3 text-sm">
+                    <span className="shrink-0 w-28 text-[11px] text-gray-400 pt-0.5">
+                      {REL_TYPE_LABELS[r.relationshipType] ?? r.relationshipType}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-gray-400 font-mono text-xs">{arrow}</span>
+                        <a
+                          href={counterUrl}
+                          className="font-mono text-xs text-blue-600 hover:underline"
+                        >
+                          {counterSlug}
+                        </a>
+                        <span className="text-[10px] text-gray-300 border border-gray-200 rounded px-1">
+                          {r.confidence}
+                        </span>
+                      </div>
+                      {r.description && (
+                        <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">
+                          {r.description}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
         {/* Reference 一覧 */}
         <section className="mb-10">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
-            References — 問い別AI参照ページ
+            References — 問い別の知識
           </h2>
 
           {references.length === 0 ? (
@@ -251,7 +329,7 @@ export default async function EntityPage({ params }: Props) {
         {/* AI / API 導線 */}
         <section className="border border-gray-100 rounded-xl p-4 bg-gray-50 mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-            AI &amp; API Access
+            データアクセス
           </h2>
           <ul className="space-y-2 text-xs text-gray-500">
             <li className="flex items-start gap-2">
@@ -283,7 +361,7 @@ export default async function EntityPage({ params }: Props) {
           <p>
             <a href="/" className="hover:underline">RefBase</a>
             {' — '}
-            AI Reference Knowledge Base
+            AI Knowledge Infrastructure
           </p>
           <p className="mt-1 font-mono text-gray-300 break-all">{entityUrl}</p>
         </footer>

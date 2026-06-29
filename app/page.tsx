@@ -35,19 +35,19 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
 };
 
 export const metadata: Metadata = {
-  title: 'RefBase | AIのための知識基盤',
-  description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+  title: 'RefBase — AI Knowledge Infrastructure',
+  description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化する基盤。Question → Cluster → Entity → Reference → Evidence の構造で、AI の回答に自然に出現できる状態をつくる。',
   alternates: { canonical: REFBASE_BASE },
   openGraph: {
-    title: 'RefBase | AIのための知識基盤',
-    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+    title: 'RefBase — AI Knowledge Infrastructure',
+    description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化する基盤。',
     url: REFBASE_BASE,
     images: ['https://www.refbase.ai/og.png'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RefBase | AIのための知識基盤',
-    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。AIが理解・引用しやすい情報を提供します。',
+    title: 'RefBase — AI Knowledge Infrastructure',
+    description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化する基盤。',
   },
 };
 
@@ -72,7 +72,7 @@ export default async function TopPage() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'RefBase',
-    description: 'RefBaseは、企業・サービスに関する問い別の回答と根拠情報を構造化して公開する、AIのための参照知識基盤（Reference Base）です。',
+    description: '企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化するAI Knowledge Infrastructure。',
     url: REFBASE_BASE,
   };
 
@@ -93,9 +93,9 @@ export default async function TopPage() {
   const clusterListLd = activeClusters.length > 0 ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'RefBase — Question Cluster一覧',
-    description: '問いの種類でまとめた分野別インデックス。AI回答に頻出する問いパターンを Cluster として整理しています。',
-    url: `${REFBASE_BASE}/#clusters`,
+    name: 'RefBase — AI Knowledge Directory',
+    description: '問いのパターンで整理した AI Knowledge Index。分野ごとに Entity / Reference を探索できる Cluster の一覧。',
+    url: `${REFBASE_BASE}/#knowledge-directory`,
     numberOfItems: activeClusters.length,
     itemListElement: activeClusters.map((c, i) => ({
       '@type': 'ListItem',
@@ -125,13 +125,16 @@ export default async function TopPage() {
           <h1 className="text-2xl font-semibold leading-snug mb-4">
             RefBase
           </h1>
-          <p className="text-base font-medium text-gray-700 leading-snug mb-4">
-            RefBase is a reference layer for AI-generated answers.
+          <p className="text-base font-medium text-gray-700 leading-snug mb-3">
+            RefBase is an AI Knowledge Infrastructure.
           </p>
-          <p className="text-sm text-gray-500 leading-relaxed max-w-lg">
-            企業・サービスについて、AIが回答時に参照できる<br />
-            問い別の回答・根拠・FAQを構造化して公開する知識基盤です。
+          <p className="text-sm text-gray-500 leading-relaxed max-w-lg mb-5">
+            企業・サービス・商品に関する知識を、<br />
+            AI が理解・比較・推論・推薦できる形へ構造化する基盤。
           </p>
+          <a href="#knowledge-directory" className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+            Explore AI Knowledge Directory →
+          </a>
         </header>
 
         {/* ② Why RefBase */}
@@ -155,8 +158,8 @@ export default async function TopPage() {
               },
               {
                 label: 'RefBase',
-                sub:   'Designed as a reference layer for AI-generated answers',
-                note:  '問い別の回答・根拠・FAQをAIが取得・引用・統合しやすい単位で構造化する。',
+                sub:   'Designed as an AI Knowledge Infrastructure',
+                note:  '企業・サービス・商品の知識を、AI が理解・比較・推論・推薦できる形へ構造化する。引用は手段。目的は AI の回答に自然に出現すること。',
                 muted: false,
               },
             ].map(row => (
@@ -179,8 +182,8 @@ export default async function TopPage() {
             ))}
           </div>
           <p className="text-xs text-gray-400 leading-relaxed mt-4 max-w-lg">
-            生成AIはページ全体を読むのではなく、問いに対する回答・根拠・FAQ・比較軸などを統合して回答を生成します。
-            RefBaseは企業紹介サイトではなく、AIが取得・引用・統合しやすい単位で情報を構造化するための知識レイヤーです。
+            引用は手段。目的は、AI が企業・サービス・商品を正しく理解し、回答の中で自然に出現できる状態をつくること。<br />
+            RefBase は Question を起点に知識を構造化する。Question → Cluster → Entity → Reference → Evidence の5層で、AI が理解・比較・推論・推薦できる単位に整える。
           </p>
         </section>
 
@@ -189,125 +192,80 @@ export default async function TopPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">
             Structure
           </h2>
-          <div className="space-y-4">
-            {/* Entity */}
-            <div className="border border-gray-200 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <span className="text-[11px] font-bold text-gray-400 font-mono shrink-0 mt-0.5 w-20">Entity</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-800 leading-snug">企業・サービス単位の親ページ</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    例: <span className="font-mono">/entity/aisle</span> — 株式会社Aisle に関するReferenceをまとめたハブ
-                  </p>
-                </div>
-              </div>
-            </div>
-            {/* 矢印 */}
-            <div className="pl-4 text-gray-300 text-sm select-none">└──</div>
-            {/* Reference */}
-            <div className="border border-gray-200 rounded-xl p-4 ml-6">
-              <div className="flex items-start gap-3">
-                <span className="text-[11px] font-bold text-gray-400 font-mono shrink-0 mt-0.5 w-20">Reference</span>
+          <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+            {[
+              {
+                type: 'Question',
+                label: 'AI への問い — 知識の起点',
+                note: '「このツールとあのツールはどう違うか？」のような問いのパターンを単位に知識を構造化する。',
+                example: null,
+              },
+              {
+                type: 'Cluster',
+                label: '知識の分野 — AI Knowledge Directory の分類単位',
+                note: null,
+                example: '/cluster/ai-assistant',
+              },
+              {
+                type: 'Entity',
+                label: '企業・サービス・商品・人物',
+                note: null,
+                example: '/entity/chatgpt',
+              },
+              {
+                type: 'Reference',
+                label: '問い別の知識単位 — AI が引用する回答',
+                note: 'answer / evidencePoints / faq / sourceEvidence の4フィールドで構成。',
+                example: '/reference/chatgpt/comparison-001',
+              },
+              {
+                type: 'Evidence',
+                label: 'Reference を支える根拠・出典',
+                note: '公式サイト・論文・メディア記事など。Tier（T1〜T4）で信頼性を分類。',
+                example: null,
+              },
+            ].map((item) => (
+              <div key={item.type} className="flex items-start gap-3 px-4 py-3 bg-white">
+                <span className="text-[11px] font-bold text-gray-400 font-mono shrink-0 mt-0.5 w-20">{item.type}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 leading-snug">問い別の回答・根拠単位</p>
-                  <p className="text-xs text-gray-400 mt-1 mb-3">
-                    例: <span className="font-mono">/reference/aisle/recommendation-001</span>
-                  </p>
-                  <ul className="space-y-1">
-                    {[
-                      ['answer', 'AIが引用する本文回答'],
-                      ['evidencePoints', '根拠・実績リスト'],
-                      ['faq', '関連Q&A'],
-                      ['sourceEvidence', '情報ソース'],
-                    ].map(([field, desc]) => (
-                      <li key={field} className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="font-mono text-gray-400 w-28 shrink-0">{field}</span>
-                        <span>{desc}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-sm font-medium text-gray-800 leading-snug">{item.label}</p>
+                  {item.example && (
+                    <p className="text-xs text-gray-400 mt-0.5">例: <span className="font-mono">{item.example}</span></p>
+                  )}
+                  {item.note && (
+                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{item.note}</p>
+                  )}
                 </div>
+              </div>
+            ))}
+          </div>
+          {/* Knowledge Graph */}
+          <div className="border border-gray-100 rounded-xl p-4 mt-3 bg-gray-50">
+            <div className="flex items-start gap-3">
+              <span className="text-[11px] font-bold text-gray-400 font-mono shrink-0 mt-0.5 w-20">Knowledge Graph</span>
+              <div>
+                <p className="text-sm font-medium text-gray-800 leading-snug">Entity 間の構造化されたつながり</p>
+                <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                  競合・親子・所属 Cluster を Relationship として定義。AI がテキストを読まなくても文脈を把握できる構造を提供する。
+                </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ③ AI & Machine Access */}
-        <section className="mb-12">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">
-            AI &amp; Machine Access
-          </h2>
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <table className="w-full text-xs">
-              <tbody>
-                {[
-                  {
-                    label: 'llms.txt',
-                    href: '/llms.txt',
-                    path: '/llms.txt',
-                    desc: '全Referenceのインデックス。AIクローラーが一括取得できる形式で公開。',
-                  },
-                  {
-                    label: 'JSON-LD',
-                    href: null,
-                    path: null,
-                    desc: '各ページに Organization / FAQPage / ItemList スキーマを埋め込み済み。',
-                  },
-                  {
-                    label: 'Entity API',
-                    href: '/api/entity/aisle',
-                    path: '/api/entity/{entityId}',
-                    desc: 'Entity情報をJSONで返す。RAG連携・ツール呼び出しに対応。',
-                  },
-                  {
-                    label: 'Reference API',
-                    href: '/api/reference/aisle',
-                    path: '/api/reference/{entityId}',
-                    desc: 'Reference一覧をJSONで返す。answer / evidencePoints / faq を含む。',
-                  },
-                  {
-                    label: 'Cluster API',
-                    href: '/api/cluster-registry',
-                    path: '/api/cluster-registry',
-                    desc: 'Cluster一覧をJSONで返す。entitySlugs / maturity / representativeQuestions を含む。',
-                  },
-                ].map((row, i) => (
-                  <tr key={row.label} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="py-3 pl-4 pr-3 font-medium text-gray-700 w-28 align-top shrink-0">
-                      {row.label}
-                    </td>
-                    <td className="py-3 pr-3 align-top">
-                      {row.href ? (
-                        <a href={row.href} className="font-mono text-blue-600 hover:underline break-all">
-                          {row.path}
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 italic">各ページに自動埋め込み</span>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4 text-gray-400 leading-relaxed align-top hidden sm:table-cell">
-                      {row.desc}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* ④ Clusters — Question Cluster入口 */}
+        {/* ④ Clusters — AI Knowledge Directory */}
         {activeClusters.length > 0 && (
-          <section id="clusters" className="mb-12">
+          <section id="knowledge-directory" className="mb-12">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Question Clusters
+                AI Knowledge Directory
               </h2>
               <span className="text-[11px] text-gray-400">
                 {activeClusters.length} clusters
               </span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed mb-5">
-              問いの種類でまとめた分野別インデックスです。AIが頻繁に受け取る問いパターンを Cluster として整理しています。
+              問いのパターンで整理した、AI Knowledge Index です。AI が頻繁に受け取る Question を Cluster として分類し、分野ごとに Entity / Reference を探索できます。
             </p>
             <ul className="space-y-3">
               {activeClusters.map(c => (
@@ -410,9 +368,72 @@ export default async function TopPage() {
           )}
         </section>
 
+        {/* ⑥ AI & Machine Access */}
+        <section className="mb-12">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">
+            AI &amp; Machine Access
+          </h2>
+          <div className="border border-gray-100 rounded-xl overflow-hidden">
+            <table className="w-full text-xs">
+              <tbody>
+                {[
+                  {
+                    label: 'llms.txt',
+                    href: '/llms.txt',
+                    path: '/llms.txt',
+                    desc: '全 Reference のインデックス。AI クローラーが一括取得できる形式で公開。',
+                  },
+                  {
+                    label: 'JSON-LD',
+                    href: null,
+                    path: null,
+                    desc: '各ページに Organization / FAQPage / ItemList スキーマを埋め込み済み。',
+                  },
+                  {
+                    label: 'Entity API',
+                    href: '/api/entity/aisle',
+                    path: '/api/entity/{entityId}',
+                    desc: 'Entity 情報を JSON で返す。RAG 連携・ツール呼び出しに対応。',
+                  },
+                  {
+                    label: 'Reference API',
+                    href: '/api/reference/aisle',
+                    path: '/api/reference/{entityId}',
+                    desc: 'Reference 一覧を JSON で返す。answer / evidencePoints / faq を含む。',
+                  },
+                  {
+                    label: 'Cluster API',
+                    href: '/api/cluster-registry',
+                    path: '/api/cluster-registry',
+                    desc: 'Cluster 一覧を JSON で返す。entitySlugs / maturity / representativeQuestions を含む。',
+                  },
+                ].map((row, i) => (
+                  <tr key={row.label} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="py-3 pl-4 pr-3 font-medium text-gray-700 w-28 align-top shrink-0">
+                      {row.label}
+                    </td>
+                    <td className="py-3 pr-3 align-top">
+                      {row.href ? (
+                        <a href={row.href} className="font-mono text-blue-600 hover:underline break-all">
+                          {row.path}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 italic">各ページに自動埋め込み</span>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 text-gray-400 leading-relaxed align-top hidden sm:table-cell">
+                      {row.desc}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         {/* Footer */}
         <footer className="border-t border-gray-100 pt-6 text-xs text-gray-400 space-y-1">
-          <p>RefBase — A reference layer for AI-generated answers.</p>
+          <p>RefBase — AI Knowledge Infrastructure</p>
           <p className="font-mono text-gray-300 break-all">{REFBASE_BASE}</p>
         </footer>
 
