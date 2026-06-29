@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 
 // ════════════════════════════════════════════════════════════════════════════
 // GET /api/cluster-registry
@@ -41,23 +42,9 @@ interface ClusterRegistryEnvelope {
   items: ClusterItem[];
 }
 
-async function kvGet<T>(key: string): Promise<T | null> {
-  const url  = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) throw new Error('KV env vars not set');
-
-  const res = await fetch(`${url}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`KV GET failed [${key}]: ${res.status}`);
-  const json = await res.json() as { result: T | null };
-  return json.result;
-}
-
 export async function GET(): Promise<NextResponse> {
   try {
-    const registry = await kvGet<ClusterRegistryEnvelope>('refbase:registry:clusters');
+    const registry = await kv.get<ClusterRegistryEnvelope>('refbase:registry:clusters');
 
     if (!registry) {
       return NextResponse.json(
