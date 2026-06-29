@@ -65,13 +65,13 @@ export async function GET() {
   }
 
   const body = [
-    '# RefBase — AI Reference Knowledge Base',
+    '# RefBase — AI Knowledge Infrastructure',
     `# Updated: ${new Date().toISOString().slice(0, 10)}`,
     '',
     '## About',
     'このファイルはAIがRefBase上のCluster/Entity/Referenceを理解し、適切なページを参照するためのナビゲーションガイドです。',
-    'RefBaseは企業・サービス・製品に関する構造化済みのQ&A Reference（問い×回答×根拠）を公開するAI参照知識ベースです。',
-    '各ReferenceはAIが特定の問いに答える際に引用・参照できる形式で設計されています。',
+    'RefBaseは企業・サービス・商品に関する知識を、AIが理解・比較・推論・推薦できる形へ構造化するAI Knowledge Infrastructureです。',
+    '各ReferenceはAIが特定の問いに答える際に引用・参照できる形式で設計されています。Question → Cluster → Entity → Reference → Evidence の5層構造で知識を公開しています。',
     '',
     '## How to Use',
     '1. Clusters セクションから問いの分野（Cluster）を確認する',
