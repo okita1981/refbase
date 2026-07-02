@@ -181,12 +181,26 @@ function CountTable({ title, counts, note }: { title: string; counts: Record<str
 export default async function RefBaseGrowthDashboardPage() {
   const data = await loadMetrics();
 
+  const lastUpdatedJst = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(new Date(data.generatedAt)).replace(' ', ' ');
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div>
-        <h1 className="text-lg font-bold text-slate-800 mb-1">RefBase Growth Dashboard</h1>
-        <p className="text-sm text-slate-500">内部運用専用（Read Only）。RefBase本番KVから集計。</p>
-        <p className="text-xs text-slate-400 mt-1">取得時刻: {data.generatedAt}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-bold text-slate-800 mb-1">RefBase Growth Dashboard</h1>
+          <p className="text-sm text-slate-500">内部運用専用（Read Only）。RefBase本番KVから毎回再集計。</p>
+          <p className="text-xs text-slate-400 mt-1">Last updated: {lastUpdatedJst} JST</p>
+        </div>
+        <a
+          href="/admin/refbase-growth"
+          className="shrink-0 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors"
+        >
+          ↻ Refresh
+        </a>
       </div>
 
       {/* 1. Summary Cards */}
@@ -282,6 +296,28 @@ export default async function RefBaseGrowthDashboardPage() {
             {data.backlog.credibilityGapEntities.length === 0 && <li className="text-slate-400">該当なし</li>}
           </ul>
         </div>
+      </div>
+
+      {/* Aisle Studio連携方針 */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-xs text-slate-500 space-y-2">
+        <p className="font-semibold text-slate-600">このDashboardについて</p>
+        <p>
+          RefBase Growth Dashboardは、RefBaseのKV状態を集計する内部運用画面です。
+          そのため、Claude Code経由で追加したEntity/Reference/Evidenceも、将来的にAisle Studio経由で追加・公開された
+          Entity/Reference/Evidenceも、同じKV（<code className="font-mono">refbase:company:*</code> /
+          <code className="font-mono"> refbase:ref:*</code> / <code className="font-mono">refbase:index:*</code> /
+          <code className="font-mono"> evidence:*</code>）に保存されれば自動的に集計対象になります。
+        </p>
+        <p>
+          今後は、手動追加だけでなくAisle StudioのAuthoring / PublishフローからRefBaseへ追加されたKnowledgeも、
+          このDashboardで同じように可視化されることを前提にします。
+        </p>
+        <p className="text-amber-600">
+          注：Cluster / Relationship Registry（<code className="font-mono">refbase:registry:clusters</code> /
+          <code className="font-mono"> refbase:registry:relationships</code>）は、現時点ではAisle Studioの
+          生成フローから自動更新されず、単発の登録スクリプトでのみ更新されます。Entity/Reference/Evidenceが増えても
+          Clusters / Relationshipsカードの数値は自動追従しない点にご注意ください。
+        </p>
       </div>
     </div>
   );
