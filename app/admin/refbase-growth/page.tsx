@@ -68,9 +68,11 @@ async function loadMetrics() {
   const referenceCount = refKeys.length;
   const evidenceCount = evidenceLists.reduce((sum, list) => sum + (list?.length ?? 0), 0);
 
-  // Cluster数・Relationship数は正式Registryから算出（近似ではない）
-  const clusterCount = clusterRegistry?.items.filter(c => c.status === 'ACTIVE').length ?? null;
-  const relationshipCount = relationshipRegistry?.items.filter(r => r.status === 'ACTIVE').length ?? null;
+  // Cluster数・Relationship数は正式Registryから算出（近似ではない）。ACTIVE件数を主表示、total件数を補足表示する。
+  const clusterActiveCount = clusterRegistry?.items.filter(c => c.status === 'ACTIVE').length ?? null;
+  const clusterTotalCount = clusterRegistry?.items.length ?? null;
+  const relationshipActiveCount = relationshipRegistry?.items.filter(r => r.status === 'ACTIVE').length ?? null;
+  const relationshipTotalCount = relationshipRegistry?.items.length ?? null;
   const parentEntitySetCount = companies.filter(c => c?.parentEntity).length;
 
   const verificationStatusCounts: Record<string, number> = { draft: 0, verified: 0, featured: 0, unset: 0 };
@@ -136,8 +138,8 @@ async function loadMetrics() {
     generatedAt: new Date().toISOString(),
     summary: {
       entityCount, referenceCount, evidenceCount,
-      clusterCount, clusterRegistryVersion: clusterRegistry?.version ?? null,
-      relationshipCount, relationshipRegistryVersion: relationshipRegistry?.version ?? null,
+      clusterActiveCount, clusterTotalCount, clusterRegistryVersion: clusterRegistry?.version ?? null,
+      relationshipActiveCount, relationshipTotalCount, relationshipRegistryVersion: relationshipRegistry?.version ?? null,
       parentEntitySetCount, verifiedRate, draftRate,
     },
     verificationStatus: verificationStatusCounts,
@@ -194,17 +196,25 @@ export default async function RefBaseGrowthDashboardPage() {
         <SummaryCard label="Evidence" value={data.summary.evidenceCount} />
         <SummaryCard
           label="Relationships"
-          value={data.summary.relationshipCount ?? 'N/A'}
-          sub={data.summary.relationshipRegistryVersion ? `Registry v${data.summary.relationshipRegistryVersion}` : 'Registry未登録'}
+          value={data.summary.relationshipActiveCount ?? 'N/A'}
+          sub={
+            data.summary.relationshipTotalCount !== null
+              ? `${data.summary.relationshipActiveCount} active / ${data.summary.relationshipTotalCount} total`
+              : 'Registry未登録'
+          }
         />
         <SummaryCard label="Verified率" value={data.summary.verifiedRate !== null ? `${data.summary.verifiedRate}%` : '—'} />
         <SummaryCard label="Draft率" value={data.summary.draftRate !== null ? `${data.summary.draftRate}%` : '—'} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <SummaryCard
-          label="Cluster数（正式Registry）"
-          value={data.summary.clusterCount ?? 'N/A'}
-          sub={data.summary.clusterRegistryVersion ? `refbase:registry:clusters v${data.summary.clusterRegistryVersion}` : 'Registry未登録'}
+          label="Clusters"
+          value={data.summary.clusterActiveCount ?? 'N/A'}
+          sub={
+            data.summary.clusterTotalCount !== null
+              ? `${data.summary.clusterActiveCount} active / ${data.summary.clusterTotalCount} total`
+              : 'Registry未登録'
+          }
         />
         <SummaryCard label="参考: parentEntity設定済みEntity数" value={data.summary.parentEntitySetCount} />
       </div>
