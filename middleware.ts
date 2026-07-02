@@ -42,7 +42,32 @@ function extractIds(pathname: string): { entityId?: string; referenceSlug?: stri
   return {};
 }
 
+// /admin 配下の簡易Basic認証ガード。
+// ADMIN_PASSWORD環境変数を設定した場合のみ有効化する（未設定時はゲートをスキップ）。
+function checkAdminAuth(request: NextRequest): NextResponse | null {
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected) return null; // 未設定時は開発環境等を想定しゲートしない
+
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Basic ')) {
+    const decoded = atob(authHeader.slice(6));
+    const [, password] = decoded.split(':');
+    if (password === expected) return null;
+  }
+
+  return new NextResponse('Authentication required', {
+    status: 401,
+    headers: { 'WWW-Authenticate': 'Basic realm="RefBase Admin"' },
+  });
+}
+
 export function middleware(request: NextRequest, event: NextFetchEvent) {
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    const authResponse = checkAdminAuth(request);
+    if (authResponse) return authResponse;
+    return NextResponse.next();
+  }
+
   const userAgent = request.headers.get('user-agent') ?? '';
   const provider = detectBot(userAgent);
 
@@ -89,5 +114,6 @@ export const config = {
     '/sitemap.xml',
     '/api/entity/:path*',
     '/api/reference/:path*',
+    '/admin/:path*',
   ],
 };
